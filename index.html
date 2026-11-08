@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<!-- Адаптация под мобильные устройства -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Приключения Квадратика 🎮</title>
+<style>
+    /* Общие стили: убираем отступы и скролл */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+    }
+
+    html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #87CEEB;
+        font-family: 'Comic Sans MS', 'Trebuchet MS', sans-serif;
+        touch-action: none; /* Отключаем случайный скролл и зум */
+    }
+
+    /* Контейнер игры */
+    #gameContainer {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        background: linear-gradient(to bottom, #87CEEB 0%, #B0E0E6 60%, #98D8E8 100%);
+    }
+
+    /* Игровой холст */
+    #gameCanvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
+
+    /* Счётчик монет в углу */
+    #coinCounter {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        background: rgba(255, 255, 255, 0.85);
+        padding: 8px 14px;
+        border-radius: 20px;
+        font-size: 18px;
+        font-weight: bold;
+        color: #E67E22;
+        border: 3px solid #F39C12;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+        z-index: 10;
+    }
+
+    /* Инструкция сверху */
+    #instruction {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: rgba(255, 255, 255, 0.85);
+        padding: 8px 14px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: bold;
+        color: #2C3E50;
+        border: 3px solid #3498DB;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+        z-index: 10;
+        max-width: 50%;
+        text-align: right;
+    }
+
+    /* Кнопки управления */
+    .controls {
+        position: absolute;
+        bottom: 20px;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-between;
+        padding: 0 20px;
+        z-index: 20;
+        pointer-events: none;
+    }
+
+    .control-group {
+        display: flex;
+        gap: 12px;
+        pointer-events: auto;
+    }
+
+    /* Крупные кнопки для пальцев */
+    .btn {
+        width: 80px;
+        height: 80px;
+        min-width: 64px;
+        min-height: 64px;
+        border-radius: 50%;
+        border: 4px solid white;
+        background: rgba(52, 152, 219, 0.85);
+        color: white;
+        font-size: 32px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 5px 12px rgba(0,0,0,0.3);
+        cursor: pointer;
+        transition: transform 0.1s;
+    }
+
+    .btn:active, .btn.pressed {
+        transform: scale(0.92);
+        background: rgba(41, 128, 185, 0.95);
+    }
+
+    .btn-jump {
+        background: rgba(231, 76, 60, 0.85);
+        width: 100px;
+        height: 100px;
+        font-size: 20px;
+    }
+
+    .btn-jump:active, .btn-jump.pressed {
+        background: rgba(192, 57, 43, 0.95);
+    }
+
+    /* Оверлеи сообщений */
+    .overlay {
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        z-index: 100;
+        padding: 20px;
+    }
+
+    .overlay.active {
+        display: flex;
+    }
+
+    .overlay-box {
+        background: white;
+        border-radius: 25px;
+        padding: 30px 40px;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        border: 5px solid #F1C40F;
+        max-width: 90%;
+    }
+
+    .overlay-box h1 {
+        font-size: 32px;
+        margin-bottom: 15px;
+        color: #E74C3C;
+    }
+
+    .overlay-box p {
+        font-size: 18px;
+        color: #2C3E50;
+        margin-bottom: 20px;
+        line-height: 1.4;
+    }
+
+    .overlay-box.win h1 { color: #27AE60; }
+    .overlay-box.lose h1 { color: #E74C3C; }
+
+    .play-btn {
+        background: #27AE60;
+        color: white;
+        border: none;
+        padding: 15px 35px;
+        font-size: 20px;
+        font-weight: bold;
+        border-radius: 30px;
+        cursor: pointer;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        font-family: inherit;
+    }
+
+    .play-btn:active {
+        transform: scale(0.95);
+        background: #229954;
+    }
+
+    /* Адаптация для маленьких экранов */
+    @media (max-width: 480px) {
+        .btn { width: 72px; height: 72px; font-size: 28px; }
+        .btn-jump { width: 90px; height: 90px; font-size: 18px; }
+        #coinCounter { font-size: 15px; padding: 6px 12px; }
+        #instruction { font-size: 12px; padding: 6px 10px; }
+        .overlay-box h1 { font-size: 26px; }
+        .overlay-box p { font-size: 16px; }
+    }
+</style>
+</head>
+<body>
+
+<div id="gameContainer">
+    <!-- Игровой холст -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Счётчик монет -->
+    <div id="coinCounter">🪙 0 / 3</div>
+
+    <!-- Короткая инструкция -->
+    <div id="instruction">Собери 3 монеты и дойди до флага 🏁</div>
+
+    <!-- Кнопки управления -->
+    <div class="controls">
+        <div class="control-group">
+            <button class="btn" id="btnLeft" aria-label="Влево">◀</button>
+            <button class="btn" id="btnRight" aria-label="Вправо">▶</button>
+        </div>
+        <div class="control-group">
+            <button class="btn btn-jump" id="btnJump" aria-label="Прыжок">ПРЫЖОК</button>
+        </div>
+    </div>
+
+    <!-- Оверлей победы -->
+    <div class="overlay" id="winOverlay">
+        <div class="overlay-box win">
+            <h1>🎉 Уровень пройден! 🎉</h1>
+            <p>Ты собрал все монеты и добрался до флага!</p>
+            <button class="play-btn" id="btnPlayAgainWin">Играть снова</button>
+        </div>
+    </div>
+
+    <!-- Оверлей проигрыша -->
+    <div class="overlay" id="loseOverlay">
+        <div class="overlay-box lose">
+            <h1>💦 Упс! 💦</h1>
+            <p>Ты упал в пропасть.<br>Попробуй снова!</p>
+            <button class="play-btn" id="btnPlayAgainLose">Играть снова</button>
+        </div>
+    </div>
+</div>
+
+<script>
+/* =========================================================
+   ИГРА-ПЛАТФОРМЕР ДЛЯ ДЕТЕЙ
+   ========================================================= */
+
+// Получаем элементы
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const coinCounterEl = document.getElementById('coinCounter');
+const winOverlay = document.getElementById('winOverlay');
+const loseOverlay = document.getElementById('loseOverlay');
+
+// Кнопки управления
+const btnLeft = document.getElementById('btnLeft');
+const btnRight = document.getElementById('btnRight');
+const btnJump = document.getElementById('btnJump');
+const btnPlayAgainWin = document.getElementById('btnPlayAgainWin');
+const btnPlayAgainLose = document.getElementById('btnPlayAgainLose');
+
+/* ---------- Адаптация canvas под размер экрана ---------- */
+// Логический размер игрового мира (внутренние координаты)
+const WORLD_WIDTH = 800;
+const WORLD_HEIGHT = 500;
+
+function resizeCanvas() {
+    // Сохраняем пропорции мира, заполняя экран
+    const container = document.getElementById('gameContainer');
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+/* ---------- Состояние ввода ---------- */
+const keys = {
+    left: false,
+    right: false,
+    jump: false
+};
+
+/* ---------- Игровые константы (физика) ---------- */
+const GRAVITY = 1800;       // ускорение свободного падения, px/s²
+const MOVE_SPEED = 260;     // скорость бега, px/s
+const JUMP_VELOCITY = -620; // начальная скорость прыжка, px/s
+const FRICTION = 0.85;      // трение при остановке
+
+/* ---------- Игрок ---------- */
+const player = {
+    x: 60, y: 300,
+    width: 36, height: 36,
+    vx: 0, vy: 0,
+    onGround: false,
+    facing: 1 // 1 = вправо, -1 = влево
+};
+
+/* ---------- Уровень: платформы, монеты, флаг ---------- */
+// Платформы: {x, y, width, height}
+let platforms = [];
+// Монеты: {x, y, r, collected}
+let coins = [];
+// Флаг: {x, y, width, height}
+let flag = {};
+// Состояние игры: 'playing' | 'win' | 'lose'
+let gameState = 'playing';
+// Счётчик собранных монет
+let coinsCollected = 0;
+
+// Инициализация уровня
+function initLevel() {
+    // Создаём платформы (6 штук)
+    platforms = [
+        // Стартовая платформа (земля слева)
+        { x: 0, y: 420, width: 200, height: 80 },
+        // Вторая платформа
+        { x: 260, y: 370, width: 120, height: 20 },
+        // Третья платформа (повыше)
+        { x: 430, y: 310, width: 120, height: 20 },
+        // Четвёртая (ещё выше)
+        { x: 600, y: 250, width: 120, height: 20 },
+        // Пятая — длинная средняя
+        { x: 300, y: 190, width: 160, height: 20 },
+        // Финальная платформа (справа сверху)
+        { x: 680, y: 140, width: 120, height: 20 }
+    ];
+
+    // 3 монеты на разных платформах
+    coins = [
+        { x: 320, y: 340, r: 12, collected: false }, // на 2-й платформе
+        { x: 490, y: 280, r: 12, collected: false }, // на 3-й платформе
+        { x: 380, y: 160, r: 12, collected: false }  // на 5-й платформе
+    ];
+
+    // Флаг на финальной платформе
+    flag = { x: 730, y: 80, width: 30, height: 60 };
+
+    // Сброс игрока
+    player.x = 60;
+    player.y = 300;
+    player.vx = 0;
+    player.vy = 0;
+    player.onGround = false;
+    player.facing = 1;
+
+    coinsCollected = 0;
+    gameState = 'playing';
+
+    updateCoinCounter();
+}
+
+/* ---------- Обновление счётчика ---------- */
+function updateCoinCounter() {
+    coinCounterEl.textContent = `🪙 ${coinsCollected} / 3`;
+}
+
+/* ---------- Физика и обновление ---------- */
+function update(dt) {
+    if (gameState !== 'playing') return;
+
+    // --- Горизонтальное движение ---
+    let moveDir = 0;
+    if (keys.left) moveDir -= 1;
+    if (keys.right) moveDir += 1;
+
+    if (moveDir !== 0) {
+        player.vx = moveDir * MOVE_SPEED;
+        player.facing = moveDir;
+    } else {
+        // Плавная остановка
+        player.vx *= FRICTION;
+        if (Math.abs(player.vx) < 5) player.vx = 0;
+    }
+
+    // --- Прыжок ---
+    if (keys.jump && player.onGround) {
+        player.vy = JUMP_VELOCITY;
+        player.onGround = false;
+    }
+
+    // --- Гравитация ---
+    player.vy += GRAVITY * dt;
+    // Ограничиваем максимальную скорость падения
+    if (player.vy > 1000) player.vy = 1000;
+
+    // --- Перемещение по X и проверка коллизий ---
+    player.x += player.vx * dt;
+    resolveCollisions('x');
+
+    // --- Перемещение по Y и проверка коллизий ---
+    player.y += player.vy * dt;
+    player.onGround = false;
+    resolveCollisions('y');
+
+    // --- Границы мира по X ---
+    if (player.x < 0) player.x = 0;
+    if (player.x + player.width > WORLD_WIDTH) player.x = WORLD_WIDTH - player.width;
+
+    // --- Падение в пропасть ---
+    if (player.y > WORLD_HEIGHT + 50) {
+        gameState = 'lose';
+        loseOverlay.classList.add('active');
+    }
+
+    // --- Сбор монет ---
+    for (let coin of coins) {
+        if (coin.collected) continue;
+        // Проверяем пересечение игрока и круга монеты
+        const cx = player.x + player.width / 2;
+        const cy = player.y + player.height / 2;
+        const dx = cx - coin.x;
+        const dy = cy - coin.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < coin.r + player.width / 2 - 4) {
+            coin.collected = true;
+            coinsCollected++;
+            updateCoinCounter();
+        }
+    }
+
+    // --- Проверка финиша ---
+    if (coinsCollected === 3) {
+        if (rectIntersect(
+            player.x, player.y, player.width, player.height,
+            flag.x, flag.y, flag.width, flag.height
+        )) {
+            gameState = 'win';
+            winOverlay.classList.add('active');
+        }
+    }
+}
+
+/* ---------- Проверка пересечения двух прямоугольников ---------- */
+function rectIntersect(x1, y1, w1, h1, x2, y2, w2, h2) {
+    return x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2;
+}
+
+/* ---------- Разрешение коллизий с платформами ---------- */
+function resolveCollisions(axis) {
+    for (let p of platforms) {
+        if (!rectIntersect(player.x, player.y, player.width, player.height,
+                           p.x, p.y, p.width, p.height)) continue;
+
+        if (axis === 'x') {
+            // Двигались влево — прижались к правому краю платформы
+            if (player.vx > 0) {
+                player.x = p.x - player.width;
+            } else if (player.vx < 0) {
+                player.x = p.x + p.width;
+            }
+            player.vx = 0;
+        } else {
+            // Двигались вниз — приземлились
+            if (player.vy > 0) {
+                player.y = p.y - player.height;
+                player.vy = 0;
+                player.onGround = true;
+            } else if (player.vy < 0) {
+                // Ударились головой
+                player.y = p.y + p.height;
+                player.vy = 0;
+            }
+        }
+    }
+}
+
+/* ---------- Отрисовка ---------- */
+function draw() {
+    // Масштабируем мир под размер canvas
+    const scaleX = canvas.width / WORLD_WIDTH;
+    const scaleY = canvas.height / WORLD_HEIGHT;
+    const scale = Math.min(scaleX, scaleY);
+    const offsetX = (canvas.width - WORLD_WIDTH * scale) / 2;
+    const offsetY = (canvas.height - WORLD_HEIGHT * scale) / 2;
+
+    ctx.save();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Рисуем фон неба на весь canvas
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0, '#87CEEB');
+    grad.addColorStop(1, '#B0E0E6');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Применяем масштабирование игрового мира
+    ctx.translate(offsetX, offsetY);
+    ctx.scale(scale, scale);
+
+    // Облачка на фоне
+    drawClouds();
+
+    // Платформы
+    for (let p of platforms) {
+        drawPlatform(p);
+    }
+
+    // Монеты
+    for (let coin of coins) {
+        if (!coin.collected) drawCoin(coin);
+    }
+
+    // Флаг
+    drawFlag(flag);
+
+    // Игрок
+    drawPlayer();
+
+    ctx.restore();
+}
+
+/* ---------- Облачка ---------- */
+function drawClouds() {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    drawCloud(80, 60, 30);
+    drawCloud(350, 40, 25);
+    drawCloud(600, 80, 35);
+}
+function drawCloud(x, y, r) {
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.arc(x + r * 0.8, y + 5, r * 0.8, 0, Math.PI * 2);
+    ctx.arc(x - r * 0.8, y + 5, r * 0.7, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+/* ---------- Платформа (зелёная с травкой) ---------- */
+function drawPlatform(p) {
+    // Тело платформы
+    ctx.fillStyle = '#8B5A2B';
+    ctx.fillRect(p.x, p.y + 6, p.width, p.height - 6);
+    // Трава сверху
+    ctx.fillStyle = '#27AE60';
+    ctx.fillRect(p.x, p.y, p.width, 10);
+    // Блик
+    ctx.fillStyle = '#2ECC71';
+    ctx.fillRect(p.x, p.y, p.width, 4);
+    // Контур
+    ctx.strokeStyle = '#1E8449';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(p.x, p.y, p.width, p.height);
+}
+
+/* ---------- Монета (жёлтый круг с блеском) ---------- */
+function drawCoin(c) {
+    // Пульсация
+    const pulse = 1 + Math.sin(Date.now() / 200) * 0.08;
+    const r = c.r * pulse;
+
+    // Внешний круг
+    ctx.fillStyle = '#F1C40F';
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Обводка
+    ctx.strokeStyle = '#D68910';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Блик
+    ctx.fillStyle = '#FFF8B0';
+    ctx.beginPath();
+    ctx.arc(c.x - r * 0.3, c.y - r * 0.3, r * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+/* ---------- Флаг ---------- */
+function drawFlag(f) {
+    // Древко
+    ctx.fillStyle = '#6E2C00';
+    ctx.fillRect(f.x, f.y, 4, f.height);
+    // Ткань флага (зелёная, с лёгкой анимацией)
+    const wave = Math.sin(Date.now() / 300) * 2;
+    ctx.fillStyle = '#27AE60';
+    ctx.beginPath();
+    ctx.moveTo(f.x + 4, f.y);
+    ctx.lineTo(f.x + 4 + 26 + wave, f.y + 8);
+    ctx.lineTo(f.x + 4, f.y + 18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#1E8449';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Звёздочка на флаге
+    ctx.fillStyle = '#F1C40F';
+    drawStar(f.x + 14, f.y + 9, 3, 5);
+}
+
+/* ---------- Звёздочка ---------- */
+function drawStar(cx, cy, r, points) {
+    ctx.beginPath();
+    for (let i = 0; i < points * 2; i++) {
+        const radius = i % 2 === 0 ? r : r / 2.2;
+        const angle = (Math.PI / points) * i - Math.PI / 2;
+        const x = cx + Math.cos(angle) * radius;
+        const y = cy + Math.sin(angle) * radius;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+}
+
+/* ---------- Игрок (круглый герой с глазами) ---------- */
+function drawPlayer() {
+    const cx = player.x + player.width / 2;
+    const cy = player.y + player.height / 2;
+    const r = player.width / 2;
+
+    // Тело
+    ctx.fillStyle = '#3498DB';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#1F618D';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Щёчки
+    ctx.fillStyle = 'rgba(255, 150, 150, 0.6)';
+    ctx.beginPath();
+    ctx.arc(cx - r * 0.55, cy + r * 0.3, r * 0.18, 0, Math.PI * 2);
+    ctx.arc(cx + r * 0.55, cy + r * 0.3, r * 0.18, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Глаза (смотрят в сторону движения)
+    const eyeOffset = player.facing * r * 0.15;
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.arc(cx - r * 0.3 + eyeOffset, cy - r * 0.15, r * 0.22, 0, Math.PI * 2);
+    ctx.arc(cx + r * 0.3 + eyeOffset, cy - r * 0.15, r * 0.22, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Зрачки
+    ctx.fillStyle = '#2C3E50';
+    ctx.beginPath();
+    ctx.arc(cx - r * 0.3 + eyeOffset + player.facing * 2, cy - r * 0.15, r * 0.1, 0, Math.PI * 2);
+    ctx.arc(cx + r * 0.3 + eyeOffset + player.facing * 2, cy - r * 0.15, r * 0.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Улыбка
+    ctx.strokeStyle = '#2C3E50';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx + eyeOffset * 0.5, cy + r * 0.15, r * 0.3, 0.1 * Math.PI, 0.9 * Math.PI);
+    ctx.stroke();
+}
+
+/* ---------- Главный игровой цикл ---------- */
+let lastTime = performance.now();
+function gameLoop(now) {
+    // Delta time в секундах, ограничиваем на случай больших пауз
+    let dt = (now - lastTime) / 1000;
+    if (dt > 0.05) dt = 0.05;
+    lastTime = now;
+
+    update(dt);
+    draw();
+
+    requestAnimationFrame(gameLoop);
+}
+
+/* ---------- Управление: клавиатура ---------- */
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+    if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+        keys.jump = true;
+        e.preventDefault(); // отключаем прокрутку пробелом
+    }
+});
+window.addEventListener('keyup', (e) => {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+    if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') keys.jump = false;
+});
+
+/* ---------- Управление: экранные кнопки ---------- */
+function bindHoldButton(btn, key) {
+    const press = (e) => {
+        e.preventDefault();
+        keys[key] = true;
+        btn.classList.add('pressed');
+    };
+    const release = (e) => {
+        e.preventDefault();
+        keys[key] = false;
+        btn.classList.remove('pressed');
+    };
+    // Сенсорные события
+    btn.addEventListener('touchstart', press, { passive: false });
+    btn.addEventListener('touchend', release, { passive: false });
+    btn.addEventListener('touchcancel', release, { passive: false });
+    // Мышь (для тестов на ПК)
+    btn.addEventListener('mousedown', press);
+    btn.addEventListener('mouseup', release);
+    btn.addEventListener('mouseleave', release);
+}
+
+bindHoldButton(btnLeft, 'left');
+bindHoldButton(btnRight, 'right');
+bindHoldButton(btnJump, 'jump');
+
+/* ---------- Кнопки перезапуска ---------- */
+function restartGame() {
+    winOverlay.classList.remove('active');
+    loseOverlay.classList.remove('active');
+    initLevel();
+}
+btnPlayAgainWin.addEventListener('click', restartGame);
+btnPlayAgainLose.addEventListener('click', restartGame);
+
+/* ---------- Предотвращаем случайные жесты браузера ---------- */
+document.addEventListener('gesturestart', (e) => e.preventDefault());
+document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+/* ---------- Запуск игры ---------- */
+initLevel();
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
